@@ -396,7 +396,7 @@ for (z = 0; z < stacks; z++) {
 
     //$fx.preview();
 
-     //send to studio.shawnkemp.art
+//Begin send to studio.shawnkemp.art **************************************************************
      studioAPI.setApiBase('https://studio-shawnkemp-art.vercel.app');
      if(new URLSearchParams(window.location.search).get('skart')){sendAllExports()}; 
 
@@ -480,7 +480,7 @@ for (z = 0; z < stacks; z++) {
         console.log("All exports sent!");
         studioAPI.signalComplete();
     }
-
+//End send to studio.shawnkemp.art **************************************************************
 
     
 
