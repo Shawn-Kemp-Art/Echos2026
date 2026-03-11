@@ -541,6 +541,8 @@ function _toClipperPaths(paperItem) {
 
 function _fromClipperPaths(clipperPaths) {
     if (!clipperPaths || clipperPaths.length === 0) return new Path();
+    // Remove near-degenerate edges that can cause winding flips at fine tolerances
+    ClipperLib.Clipper.CleanPolygons(clipperPaths, 0.5);
     var compound = new CompoundPath({});
     for (var i = 0; i < clipperPaths.length; i++) {
         var pts = clipperPaths[i];
@@ -551,7 +553,8 @@ function _fromClipperPaths(clipperPaths) {
         }
         compound.addChild(new Path({ segments: paperPts, closed: true, insert: false }));
     }
-    compound.reorient(false, true);
+    // Use non-zero winding — matches Paper.js canvas default and Clipper's output orientation
+    compound.reorient(true, true);
     return compound;
 }
 
