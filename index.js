@@ -486,8 +486,11 @@ async function sendAllExports() {
         for (var z = 0; z < stacks; z++) {
             if (z < stacks - 1) {
                 for (var zs = z + 1; zs < stacks; zs++) {
-                    sheet[z] = sheet[z].subtract(sheet[zs]);
-                    sheet[z].previousSibling.remove();
+                    var savedStyle = sheet[z].style;
+                    var newSheet = clipSubtract(sheet[z], sheet[zs]);
+                    newSheet.style = savedStyle;
+                    sheet[z].remove();
+                    sheet[z] = newSheet;
                 }
             }
         }
@@ -509,7 +512,70 @@ async function sendAllExports() {
         window.open('./index.html?testing=true', '_blank');
         }
 
-//vvvvvvvvvvvvvvv PROJECT FUNCTIONS vvvvvvvvvvvvvvv 
+//vvvvvvvvvvvvvvv CLIPPER BOOLEAN ENGINE vvvvvvvvvvvvvvv
+// Replaces Paper.js boolean ops (unite/subtract/intersect) with Clipper.js
+// for dramatically faster performance. Paths are flattened to polygons,
+// processed by Clipper, then reconstructed as Paper.js CompoundPaths.
+
+var CLIP_SCALE = 100;   // Sub-pixel integer precision for Clipper
+var CLIP_FLATTEN = 0.1;  // Bezier-to-polygon tolerance (lower = smoother, more pts)
+
+function _toClipperPaths(paperItem) {
+    var clone = paperItem.clone({ insert: false });
+    clone.flatten(CLIP_FLATTEN);
+    var children = (clone.className === 'CompoundPath') ? clone.children : [clone];
+    var result = [];
+    for (var i = 0; i < children.length; i++) {
+        var segs = children[i].segments;
+        if (segs.length < 3) continue;
+        var pts = new Array(segs.length);
+        for (var j = 0; j < segs.length; j++) {
+            pts[j] = { X: Math.round(segs[j].point.x * CLIP_SCALE),
+                       Y: Math.round(segs[j].point.y * CLIP_SCALE) };
+        }
+        result.push(pts);
+    }
+    clone.remove();
+    return result;
+}
+
+function _fromClipperPaths(clipperPaths) {
+    if (!clipperPaths || clipperPaths.length === 0) return new Path();
+    var compound = new CompoundPath({});
+    for (var i = 0; i < clipperPaths.length; i++) {
+        var pts = clipperPaths[i];
+        if (pts.length < 3) continue;
+        var paperPts = new Array(pts.length);
+        for (var j = 0; j < pts.length; j++) {
+            paperPts[j] = new Point(pts[j].X / CLIP_SCALE, pts[j].Y / CLIP_SCALE);
+        }
+        compound.addChild(new Path({ segments: paperPts, closed: true, insert: false }));
+    }
+    compound.reorient(false, true);
+    return compound;
+}
+
+function _clipBool(a, b, clipType) {
+    var savedStyle = a.style;
+    var clipper = new ClipperLib.Clipper();
+    clipper.AddPaths(_toClipperPaths(a), ClipperLib.PolyType.ptSubject, true);
+    clipper.AddPaths(_toClipperPaths(b), ClipperLib.PolyType.ptClip, true);
+    var solution = new ClipperLib.Paths();
+    clipper.Execute(clipType, solution,
+        ClipperLib.PolyFillType.pftNonZero,
+        ClipperLib.PolyFillType.pftNonZero);
+    var result = _fromClipperPaths(solution);
+    result.style = savedStyle;
+    return result;
+}
+
+function clipUnite(a, b)     { return _clipBool(a, b, ClipperLib.ClipType.ctUnion); }
+function clipSubtract(a, b)  { return _clipBool(a, b, ClipperLib.ClipType.ctDifference); }
+function clipIntersect(a, b) { return _clipBool(a, b, ClipperLib.ClipType.ctIntersection); }
+//^^^^^^^^^^^^^ END CLIPPER BOOLEAN ENGINE ^^^^^^^^^^^^^
+
+
+//vvvvvvvvvvvvvvv PROJECT FUNCTIONS vvvvvvvvvvvvvvv
  
 function rays(z){
             p = [];
@@ -551,13 +617,16 @@ function rays(z){
                 for (n=dripstart;n<dripRadius;n++){
                     if (noise.get(l,n,z)>dripfrequency){
                         var circlePath = new Path.Circle(p[n-1], noise.get(l,n)*(minOffset*2)*(z+1));
-                        mesh = mesh.subtract(circlePath);
-                        ring = PaperOffset.offsetStroke(circlePath, minOffset, { cap: 'round' })
-                        mesh = mesh.unite(ring);
+                        var meshMinusCircle = clipSubtract(mesh, circlePath);
+                        mesh.remove();
+                        mesh = meshMinusCircle;
+                        // circlePath still in layer — needed for PaperOffset below
+                        ring = PaperOffset.offsetStroke(circlePath, minOffset, { cap: 'round' });
+                        var meshPlusRing = clipUnite(mesh, ring);
+                        mesh.remove();
                         ring.remove();
                         circlePath.remove();
-                        project.activeLayer.children[project.activeLayer.children.length-2].remove();
-                        project.activeLayer.children[project.activeLayer.children.length-2].remove();
+                        mesh = meshPlusRing;
                     }
                 }
 
@@ -582,8 +651,8 @@ function floatingframe(){
     var frameWide=~~(34*ratio);var frameReveal = ~~(12*ratio);
   if (framegap.isEmpty()){
         var outsideframe = new Path.Rectangle(new Point(0, 0),new Size(~~(wide+frameReveal*2), ~~(high+frameReveal*2)), framradius)
-        var insideframe = new Path.Rectangle(new Point(frameReveal, frameReveal),new Size(wide, high)) 
-        framegap = outsideframe.subtract(insideframe);
+        var insideframe = new Path.Rectangle(new Point(frameReveal, frameReveal),new Size(wide, high))
+        framegap = clipSubtract(outsideframe, insideframe);
         outsideframe.remove();insideframe.remove();
         framegap.scale(2.2);
         framegap.position = new Point(paper.view.viewSize.width/2, paper.view.viewSize.height/2);
@@ -592,8 +661,8 @@ function floatingframe(){
     
     if (woodframe.isEmpty()){
         var outsideframe = new Path.Rectangle(new Point(0, 0),new Size(wide+frameWide*2+frameReveal*2, high+frameWide*2+frameReveal*2), framradius)
-        var insideframe = new Path.Rectangle(new Point(frameWide, frameWide),new Size(wide+frameReveal*2, high+frameReveal*2)) 
-        woodframe = outsideframe.subtract(insideframe);
+        var insideframe = new Path.Rectangle(new Point(frameWide, frameWide),new Size(wide+frameReveal*2, high+frameReveal*2))
+        woodframe = clipSubtract(outsideframe, insideframe);
         outsideframe.remove();insideframe.remove();
         woodframe.scale(2.2);
         woodframe.position = new Point(paper.view.viewSize.width/2, paper.view.viewSize.height/2);
@@ -611,22 +680,28 @@ function rangeInt(range,x,y,z){
 
 // Add shape s to sheet z
 function join(z,s){
-    sheet[z] = (s.unite(sheet[z]));
+    var savedStyle = sheet[z].style;
+    var result = clipUnite(s, sheet[z]);
+    result.style = savedStyle;
     s.remove();
-    project.activeLayer.children[project.activeLayer.children.length-2].remove();
+    sheet[z].remove();
+    sheet[z] = result;
 }
 
 // Subtract shape s from sheet z
 function cut(z,s){
-    sheet[z] = sheet[z].subtract(s);
+    var savedStyle = sheet[z].style;
+    var result = clipSubtract(sheet[z], s);
+    result.style = savedStyle;
+    sheet[z].remove();
     s.remove();
-    project.activeLayer.children[project.activeLayer.children.length-2].remove();
+    sheet[z] = result;
 }
 
 function drawFrame(z){
     var outsideframe = new Path.Rectangle(new Point(0, 0),new Size(wide, high), framradius)
-    var insideframe = new Path.Rectangle(new Point(framewidth, framewidth),new Size(wide-framewidth*2, high-framewidth*2)) 
-    sheet[z] = outsideframe.subtract(insideframe);
+    var insideframe = new Path.Rectangle(new Point(framewidth, framewidth),new Size(wide-framewidth*2, high-framewidth*2))
+    sheet[z] = clipSubtract(outsideframe, insideframe);
     outsideframe.remove();insideframe.remove();
 }
 
@@ -645,20 +720,21 @@ function frameIt(z){
         //Trim to size
         var outsideframe = new Path.Rectangle(new Point(0, 0),new Size(wide, high), framradius)
         //var outsideframe = new Path.Circle(new Point(wide/2, wide/2),wide/2);
-        sheet[z] = outsideframe.intersect(sheet[z]);
+        var clipped = clipIntersect(outsideframe, sheet[z]);
         outsideframe.remove();
-        project.activeLayer.children[project.activeLayer.children.length-2].remove();
+        sheet[z].remove();
+        sheet[z] = clipped;
 
         //Make sure there is still a solid frame
-        var outsideframe = new Path.Rectangle(new Point(0, 0),new Size(wide, high), framradius)
-        var insideframe = new Path.Rectangle(new Point(framewidth, framewidth),new Size(wide-framewidth*2, high-framewidth*2)) 
-
-        var frame = outsideframe.subtract(insideframe);
-        outsideframe.remove();insideframe.remove();
-        sheet[z] = sheet[z].unite(frame);
+        var outsideframe2 = new Path.Rectangle(new Point(0, 0),new Size(wide, high), framradius)
+        var insideframe = new Path.Rectangle(new Point(framewidth, framewidth),new Size(wide-framewidth*2, high-framewidth*2))
+        var frame = clipSubtract(outsideframe2, insideframe);
+        outsideframe2.remove();insideframe.remove();
+        var united = clipUnite(sheet[z], frame);
+        sheet[z].remove();
         frame.remove();
-        project.activeLayer.children[project.activeLayer.children.length-2].remove();
-         
+        sheet[z] = united;
+
         sheet[z].style = {fillColor: colors[z].Hex, strokeColor: linecolor.Hex, strokeWidth: 1*ratio,shadowColor: new Color(0,0,0,[0.3]),shadowBlur: 20,shadowOffset: new Point((stacks-z)*2.3, (stacks-z)*2.3)};
 }
 
@@ -778,10 +854,13 @@ document.addEventListener('keypress', (event) => {
             for (z=0;z<stacks;z++){
                 if (z<stacks-1){
                     for (zs=z+1;zs<stacks;zs++){
-                        sheet[z] = sheet[z].subtract(sheet[zs]);
-                        sheet[z].previousSibling.remove();
+                        var savedStyle = sheet[z].style;
+                        var newSheet = clipSubtract(sheet[z], sheet[zs]);
+                        newSheet.style = savedStyle;
+                        sheet[z].remove();
+                        sheet[z] = newSheet;
                     }
-                } 
+                }
                 console.log("optimizing")
             }
             console.log("plottable")

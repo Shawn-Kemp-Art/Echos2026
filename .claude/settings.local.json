@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(wc -l \"/Users/shawnkemp/Developer/Shawn Kemp Art/Echos2026\"/*.js)"
+      "Bash(wc -l \"/Users/shawnkemp/Developer/Shawn Kemp Art/Echos2026\"/*.js)",
+      "Bash(curl -s \"https://cdnjs.cloudflare.com/ajax/libs/clipper-lib/6.4.2/clipper.min.js\" -o \"/Users/shawnkemp/Developer/Shawn Kemp Art/Echos2026/clipper.min.js\")",
+      "WebFetch(domain:cdnjs.cloudflare.com)",
+      "WebFetch(domain:api.cdnjs.com)",
+      "Bash(curl -L -s \"https://unpkg.com/js-clipper@1.0.6/clipper.js\" -o \"/Users/shawnkemp/Developer/Shawn Kemp Art/Echos2026/clipper.min.js\")",
+      "Bash(npm pack:*)",
+      "Bash(tar -xzf clipper-lib-6.4.2.tgz)",
+      "Bash(cp package/clipper.js \"/Users/shawnkemp/Developer/Shawn Kemp Art/Echos2026/clipper.js\")",
+      "Bash(rm -rf package clipper-lib-6.4.2.tgz js-clipper-1.0.1.tgz)"
     ]
   }
 }
