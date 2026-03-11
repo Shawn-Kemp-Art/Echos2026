@@ -342,6 +342,13 @@ var longestDim = wide;if (wide<high){longestDim=high;}
 
 //---- Draw the Layers
 
+// Declared here so the keyboard listener and sendAllExports can access them
+var features = {};
+var renderTime;
+
+(async () => {
+
+paper.view.autoUpdate = false;
 
 for (z = 0; z < stacks; z++) {
     pz=z*prange;
@@ -352,25 +359,28 @@ for (z = 0; z < stacks; z++) {
             if (z==stacks-2){oset = minOffset}else{oset = ~~(minOffset*(stacks-z-1))}
             rays(z);
         }
-        
-    frameIt(z);// finish the layer with a final frame cleanup 
+
+    frameIt(z);// finish the layer with a final frame cleanup
 
     cutMarks(z);
     hanger(z);// add cut marks and hanger holes
     if (z == stacks-1) {signature(z);}// sign the top layer
     sheet[z].scale(2.2);
     sheet[z].position = new Point(paper.view.viewSize.width/2, paper.view.viewSize.height/2);
-   
+
     var group = new Group(sheet[z]);
-    
+
     console.log(z)//Show layer completed in console
-    
+
+    // Paint this layer immediately so the user sees progress
+    paper.view.update();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
 }//end z loop
 
-//--------- Finish up the preview ----------------------- 
+//--------- Finish up the preview -----------------------
 
     // Build the features and trigger an fxhash preview
-    var features = {};
     features.Size =  ~~(wide/100/ratio)+" x "+~~(high/100/ratio)+" inches";
     features.Width = ~~(wide/100/ratio);
     features.Height = ~~(high/100/ratio);
@@ -382,8 +392,8 @@ for (z = 0; z < stacks; z++) {
     }
     console.log(features);
     $fx.features(features);
-    
-    
+
+
     outsideframe = new Path.Rectangle(new Point(0,0),new Size(wide, high), framradius)
     sheet[stacks] = outsideframe;
     sheet[stacks].style = {fillColor: "#ffffff", strokeColor: linecolor.Hex, strokeWidth: 1*ratio,shadowColor: new Color(0,0,0,[0.3]),shadowBlur: 20,shadowOffset: new Point((stacks-z)*2.3, (stacks-z)*2.3)};
@@ -391,21 +401,41 @@ for (z = 0; z < stacks; z++) {
     sheet[stacks].position = new Point(paper.view.viewSize.width/2, paper.view.viewSize.height/2);
     sheet[stacks].sendToBack();
 
+    paper.view.autoUpdate = true;
+    paper.view.update();
+
     //floatingframe();
     //upspirestudio(features); //#render and send features to upspire.studio
 
     //$fx.preview();
 
-     //send to studio.shawnkemp.art
-     if(new URLSearchParams(window.location.search).get('skart')){sendAllExports()}; 
+//Begin send to studio.shawnkemp.art **************************************************************
+     studioAPI.setApiBase('https://studio-shawnkemp-art.vercel.app');
+     if(new URLSearchParams(window.location.search).get('skart')){sendAllExports()};
+//End send to studio.shawnkemp.art **************************************************************
 
-     async function sendAllExports() {
+      var finalTime = new Date().getTime();
+    renderTime = (finalTime - initialTime)/1000
+    console.log ('Render took : ' +  renderTime.toFixed(2) + ' seconds' );
+
+})();
+
+// Declared outside the async IIFE so the keyboard listener (line ~800) can call them
+async function sendAllExports() {
+
         paper.view.update();
-        await sendCanvasToBubbleAPI(myCanvas, $fx.hash);
-        await sendSVGToBubbleAPI($fx.hash);
+        // Send canvas as PNG
+        await studioAPI.sendCanvas(myCanvas, $fx.hash, $fx.hash+".png");
+
+        // Send SVG
+        await studioAPI.sendSVG(project.exportSVG({asString: true}), $fx.hash, $fx.hash+".svg");
+
         // send colors
         var content = JSON.stringify(features,null,2);
-        await sendTextToBubbleAPI("Colors-"+$fx.hash, content)
+
+        // Send text/JSON
+        await studioAPI.sendText(JSON.stringify(colors), $fx.hash, "Colors-"+$fx.hash+".json");
+
         // 2. Add frame
         floatingframe();
         paper.view.update();
@@ -420,7 +450,8 @@ for (z = 0; z < stacks; z++) {
             woodframe.style = { fillColor: frameOptions[i].hex };
             var fileName = "Framed" + frameOptions[i].name + "-" + $fx.hash;
             paper.view.update();
-            await sendCanvasToBubbleAPI(myCanvas, fileName);
+
+            await studioAPI.sendCanvas(myCanvas,  $fx.hash, fileName+".png");
         }
         // 4. Remove frame
         floatingframe();
@@ -437,7 +468,9 @@ for (z = 0; z < stacks; z++) {
             sheet[z].selected = true;
         }
         paper.view.update();
-        await sendSVGToBubbleAPI("Blueprint-" + $fx.hash);
+
+        // Send SVG
+        await studioAPI.sendSVG(project.exportSVG({asString: true}), $fx.hash, "Blueprint-" + $fx.hash+".svg");
         // 6. Plotting SVG
         for (var z = 0; z < stacks; z++) {
             sheet[z].style = {
@@ -459,19 +492,15 @@ for (z = 0; z < stacks; z++) {
             }
         }
         paper.view.update();
-        await sendSVGToBubbleAPI("Plotting-" + $fx.hash);
-        sendFeaturesAPI(features);
+        // Send SVG
+        await studioAPI.sendSVG(project.exportSVG({asString: true}), $fx.hash, "Plotting-" + $fx.hash+".svg");
+
+        // Send features
+        await studioAPI.sendFeatures($fx.hash, features);
+
         console.log("All exports sent!");
+        studioAPI.signalComplete();
     }
-
-
-    
-
-
-      var finalTime = new Date().getTime();
-    var renderTime = (finalTime - initialTime)/1000
-    console.log ('Render took : ' +  renderTime.toFixed(2) + ' seconds' );
-
 
         async function refreshit() {
         await new Promise(resolve => setTimeout(resolve, 5000)); // 3 sec
@@ -484,18 +513,22 @@ for (z = 0; z < stacks; z++) {
  
 function rays(z){
             p = [];
+            // Cache per-layer constants outside the spoke loop
+            var wavyFactor = ~~(wavyness*((z+1)/swirly));
+            var diagonal   = ~~(Math.sqrt(high*high+wide*wide));
+            var angleStep  = ~~(365/spokes);
+
             for (l=0; l<spokes; l++){
                 p[0] =  new Point(0,0);
-                p[1] = new Point(~~(distribution*.2),~~(wavyness*((z+1)/swirly)));
-                p[2] = new Point(~~(distribution*.3),~~(-wavyness*((z+1)/swirly)));
-                p[3] = new Point(~~(distribution*.4),~~(wavyness*((z+1)/swirly)));
-                p[4] = new Point(~~(distribution*.5),~~(-wavyness*((z+1)/swirly)));
-                p[5] = new Point(~~(distribution*.6),~~(wavyness*((z+1)/swirly)));
-                p[6] = new Point(~~(distribution*.7),~~(-wavyness*((z+1)/swirly)));
-                p[7] = new Point(~~(distribution*1.1),~~(wavyness*((z+1)/swirly)));
-                p[8] = new Point(~~(Math.sqrt(high*high+wide*wide)),~~(-wavyness*((z+1)/swirly)));
-                p[9] = new Point(~~(Math.sqrt(high*high+wide*wide)+10),~~(-wavyness*((z+1)/swirly)));
-
+                p[1] = new Point(~~(distribution*.2),  wavyFactor);
+                p[2] = new Point(~~(distribution*.3), -wavyFactor);
+                p[3] = new Point(~~(distribution*.4),  wavyFactor);
+                p[4] = new Point(~~(distribution*.5), -wavyFactor);
+                p[5] = new Point(~~(distribution*.6),  wavyFactor);
+                p[6] = new Point(~~(distribution*.7), -wavyFactor);
+                p[7] = new Point(~~(distribution*1.1), wavyFactor);
+                p[8] = new Point(diagonal,    -wavyFactor);
+                p[9] = new Point(diagonal+10, -wavyFactor);
 
                 lines = new Path();
                 lines.add(p[0]);
@@ -503,24 +536,22 @@ function rays(z){
                 lines.add(p[2]);
                 lines.add(p[3]);
                 lines.add(p[4]);
-                lines.add(p[5]); 
-                lines.add(p[6]); 
-                lines.add(p[7]); 
-                lines.add(p[8]); 
-                lines.add(p[9]);        
-                lines.simplify(); lines.smooth(); 
+                lines.add(p[5]);
+                lines.add(p[6]);
+                lines.add(p[7]);
+                lines.add(p[8]);
+                lines.add(p[9]);
+                lines.smooth();
 
-                
-
+                // offsetStroke produces clean bezier curves — flatten(4)/smooth removed
+                // to keep vertex count low for faster downstream boolean ops
                 mesh = PaperOffset.offsetStroke(lines, minOffset,{ cap: 'butt' });
-                mesh.flatten(4);
-                mesh.smooth();
                 lines.remove();
-                
+
                 for (n=dripstart;n<dripRadius;n++){
                     if (noise.get(l,n,z)>dripfrequency){
                         var circlePath = new Path.Circle(p[n-1], noise.get(l,n)*(minOffset*2)*(z+1));
-                        mesh = mesh.subtract(circlePath);        
+                        mesh = mesh.subtract(circlePath);
                         ring = PaperOffset.offsetStroke(circlePath, minOffset, { cap: 'round' })
                         mesh = mesh.unite(ring);
                         ring.remove();
@@ -528,17 +559,14 @@ function rays(z){
                         project.activeLayer.children[project.activeLayer.children.length-2].remove();
                         project.activeLayer.children[project.activeLayer.children.length-2].remove();
                     }
-                } 
+                }
 
-
-                mesh.rotate(~~(365/spokes*l),p[0]);
+                mesh.rotate(angleStep*l, p[0]);
                 mesh.position.x += origin.x;
                 mesh.position.y += origin.y;
-                join(z,mesh)
-                mesh.remove();  
-
+                join(z,mesh);
+                mesh.remove();
             }
-
 }
 
 

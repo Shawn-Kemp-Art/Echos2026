@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l \"/Users/shawnkemp/Developer/Shawn Kemp Art/Echos2026\"/*.js)"
+    ]
+  }
+}
