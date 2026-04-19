@@ -49,9 +49,11 @@ if(new URLSearchParams(window.location.search).get('l')){qlayers = new URLSearch
 var qorientation = R.random_int(1,2) < 2 ? "portrait" : "landscape";
 var qwavyness = R.random_int(10,250);
 var qswirly = R.random_int(5,50);
-var qdripfrequency = R.random_int(0,100)/100;
 var qdripstart = R.random_int(1,9);
 var qdripRadius = R.random_int(1,10);
+var qdripfrequency = R.random_int(0,100)/100;
+if(new URLSearchParams(window.location.search).get('drips')){qdripstart=2;qdripRadius=10; qdripfrequency = new URLSearchParams(window.location.search).get('drips')/10}; //drip frequency
+
 var qoriginx = R.random_int(0,1000);
 var qoriginy = R.random_int(0,1000);
 var qmatwidth = R.random_int(50,100);
