@@ -398,7 +398,8 @@ for (z = 0; z < stacks; z++) {
     sheet[stacks].style = {fillColor: "#ffffff", strokeColor: linecolor.Hex, strokeWidth: 1*ratio,shadowColor: new Color(0,0,0,[0.3]),shadowBlur: 20,shadowOffset: new Point((stacks-z)*2.3, (stacks-z)*2.3)};
     sheet[stacks].scale(2.2);
     sheet[stacks].position = new Point(paper.view.viewSize.width/2, paper.view.viewSize.height/2);
-    sheet[stacks].sendToBack();
+    var bgGroup = new Group(sheet[stacks]);
+    bgGroup.sendToBack();
 
     paper.view.autoUpdate = true;
     paper.view.update();
