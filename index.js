@@ -357,10 +357,7 @@ for (z = 0; z < stacks; z++) {
     drawFrame(z); // Draw the initial frame
 
          //-----Draw each layer
-        if(z<stacks-1){
-            if (z==stacks-2){oset = minOffset}else{oset = ~~(minOffset*(stacks-z-1))}
-            rays(z);
-        }
+        rays(z);
 
     frameIt(z);// finish the layer with a final frame cleanup
 
