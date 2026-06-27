@@ -466,10 +466,12 @@ async function sendAllExports() {
             };
             sheet[z].selected = true;
         }
+        sheet[stacks].visible = false; // exclude background frame — viewer counts it as a layer
         paper.view.update();
 
         // Send SVG
         await studioAPI.sendSVG(project.exportSVG({asString: true}), $fx.hash, "Blueprint-" + $fx.hash+".svg");
+        sheet[stacks].visible = true;
         // 6. Plotting SVG
         for (var z = 0; z < stacks; z++) {
             sheet[z].style = {
@@ -493,9 +495,11 @@ async function sendAllExports() {
                 }
             }
         }
+        sheet[stacks].visible = false; // exclude background frame from plotting export
         paper.view.update();
         // Send SVG
         await studioAPI.sendSVG(project.exportSVG({asString: true}), $fx.hash, "Plotting-" + $fx.hash+".svg");
+        sheet[stacks].visible = true;
 
         // Send features
         await studioAPI.sendFeatures($fx.hash, features);
