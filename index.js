@@ -352,6 +352,13 @@ var renderTime;
 
 paper.view.autoUpdate = false;
 
+// Clipper cold-start warm-up: the very first Clipper boolean op silently returns
+// an empty result if it runs before paper.js has rendered/yielded once. Without
+// this, the bottom layer's frame comes out empty and the piece renders one layer
+// short. Yield to the event loop once so the first real op below isn't the cold one.
+paper.view.update();
+await new Promise(resolve => setTimeout(resolve, 0));
+
 for (z = 0; z < stacks; z++) {
     pz=z*prange;
     drawFrame(z); // Draw the initial frame
