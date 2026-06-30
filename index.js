@@ -357,7 +357,8 @@ for (z = 0; z < stacks; z++) {
     drawFrame(z); // Draw the initial frame
 
          //-----Draw each layer
-        rays(z);
+        // Top layer is a clean frame only — no rays cut into it
+        if (z < stacks-1) {rays(z);}
 
     frameIt(z);// finish the layer with a final frame cleanup
 
