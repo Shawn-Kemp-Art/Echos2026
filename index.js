@@ -46,6 +46,9 @@ var qcomplexity = qcomplexity*4;
 var qlayers = 12;
 if(new URLSearchParams(window.location.search).get('l')){qlayers = new URLSearchParams(window.location.search).get('l')}; //layers
 
+var qaspect = "4:5";
+if(new URLSearchParams(window.location.search).get('aspect')){qaspect = new URLSearchParams(window.location.search).get('aspect')}; //aspect ratio
+
 var qorientation = R.random_int(1,2) < 2 ? "portrait" : "landscape";
 var qwavyness = R.random_int(10,250);
 var qswirly = R.random_int(5,50);
@@ -85,7 +88,7 @@ definitions = [
         id: "aspectratio",
         name: "Aspect ratio",
         type: "select",
-        default: "4:5",
+        default: qaspect,
         options: {options: ["1:1", "2:5","3:5","4:5","54:86","296:420"]},
     },
     {
