@@ -49,6 +49,10 @@ if(new URLSearchParams(window.location.search).get('l')){qlayers = new URLSearch
 var qaspect = "4:5";
 if(new URLSearchParams(window.location.search).get('aspect')){qaspect = new URLSearchParams(window.location.search).get('aspect')}; //aspect ratio
 
+var qhangers = 1;
+if(new URLSearchParams(window.location.search).get('hangers')){qhangers = new URLSearchParams(window.location.search).get('hangers')}; //hangers and cut marks
+
+
 var qorientation = R.random_int(1,2) < 2 ? "portrait" : "landscape";
 var qwavyness = R.random_int(10,250);
 var qswirly = R.random_int(5,50);
@@ -371,9 +375,10 @@ for (z = 0; z < stacks; z++) {
         if (z < stacks-1) {rays(z);}
 
     frameIt(z);// finish the layer with a final frame cleanup
-
+if (qhangers==1) {
     cutMarks(z);
     hanger(z);// add cut marks and hanger holes
+}
     if (z == stacks-1) {signature(z);}// sign the top layer
     sheet[z].scale(2.2);
     sheet[z].position = new Point(paper.view.viewSize.width/2, paper.view.viewSize.height/2);
