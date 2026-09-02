@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Echos</title>
+<meta name="description" content="Echos: a generative sculpture series where the code that draws the piece also drafts the blueprint that cuts it." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,340;0,9..144,480;0,9..144,600;1,9..144,420;1,9..144,500&family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #F4EEDF;
+    --paper-dim: #E8DDC3;
+    --paper-dim-2: #DED0AE;
+    --ink: #241E17;
+    --ink-soft: #4A4030;
+    --walnut: #6B5334;
+    --blueprint: #1E40D6;
+    --blueprint-ink: #14297E;
+    --rule: #C7B990;
+    --plaque: #1B1712;
+    --plaque-ink: #EDE4D2;
+    --plaque-rule: #3A3226;
+    --shadow: rgba(36,30,23,0.14);
+    --focus: #1E40D6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper: #15120C;
+      --paper-dim: #1E1911;
+      --paper-dim-2: #2A2317;
+      --ink: #EDE4D2;
+      --ink-soft: #C3B79C;
+      --walnut: #D3B27F;
+      --blueprint: #6E8CFF;
+      --blueprint-ink: #A9BAFF;
+      --rule: #3A3226;
+      --plaque: #0E0C08;
+      --plaque-ink: #EDE4D2;
+      --plaque-rule: #322A1D;
+      --shadow: rgba(0,0,0,0.45);
+      --focus: #6E8CFF;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper: #15120C;
+    --paper-dim: #1E1911;
+    --paper-dim-2: #2A2317;
+    --ink: #EDE4D2;
+    --ink-soft: #C3B79C;
+    --walnut: #D3B27F;
+    --blueprint: #6E8CFF;
+    --blueprint-ink: #A9BAFF;
+    --rule: #3A3226;
+    --plaque: #0E0C08;
+    --plaque-ink: #EDE4D2;
+    --plaque-rule: #322A1D;
+    --shadow: rgba(0,0,0,0.45);
+    --focus: #6E8CFF;
+  }
+
+  *{ box-sizing: border-box; }
+  ::selection{ background: var(--blueprint); color: var(--paper); }
+
+  body{
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a{ color: var(--blueprint-ink); }
+  a:focus-visible, button:focus-visible{ outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .wrap{
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 28px 120px;
+  }
+
+  h1, h2, h3{
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    text-wrap: balance;
+    color: var(--ink);
+    margin: 0;
+  }
+
+  .eyebrow{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--walnut);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 14px;
+  }
+  .eyebrow::after{
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  .hairline{
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 0;
+  }
+
+  /* ---------- hero ---------- */
+  .hero{
+    padding: 72px 0 40px;
+  }
+  .hero-frame{
+    border: 1px solid var(--rule);
+    padding: 36px 30px 26px;
+    position: relative;
+  }
+  .hero-frame::before, .hero-frame::after,
+  .hero-tick-a, .hero-tick-b{
+    content: "";
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border-color: var(--walnut);
+    opacity: 0.6;
+  }
+  .hero-frame::before{ top: -1px; left: -1px; border-top: 1px solid; border-left: 1px solid; }
+  .hero-frame::after{ top: -1px; right: -1px; border-top: 1px solid; border-right: 1px solid; }
+
+  .rayfan{
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-bottom: 8px;
+  }
+  .rayfan path{
+    fill: none;
+    stroke: var(--blueprint);
+    stroke-width: 1;
+    opacity: 0.55;
+  }
+  .rayfan circle{
+    fill: var(--ink);
+  }
+
+  .hero h1{
+    font-size: clamp(52px, 9vw, 92px);
+    line-height: 0.92;
+    letter-spacing: -0.01em;
+  }
+  .hero-tag{
+    font-family: "Fraunces", Georgia, serif;
+    font-style: italic;
+    font-weight: 420;
+    font-size: 20px;
+    color: var(--ink-soft);
+    max-width: 46ch;
+    margin: 14px 0 0;
+  }
+
+  .titleblock{
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--rule);
+  }
+  .titleblock div{
+    padding: 12px 16px 0;
+    border-left: 1px solid var(--rule);
+  }
+  .titleblock div:first-child{ border-left: none; padding-left: 0; }
+  .tb-label{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--walnut);
+    margin-bottom: 5px;
+  }
+  .tb-value{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  /* ---------- Sections ---------- */
+  section{ padding: 64px 0; }
+  section + section{ border-top: 1px solid var(--rule); }
+
+  .sheet-title{
+    font-size: clamp(28px, 4vw, 38px);
+    margin-bottom: 28px;
+  }
+
+  /* sheet 1: pull quote */
+  .pullquote{
+    font-family: "Fraunces", Georgia, serif;
+    font-style: italic;
+    font-weight: 420;
+    font-size: clamp(21px, 3vw, 27px);
+    line-height: 1.5;
+    color: var(--ink);
+    border-left: 2px solid var(--blueprint);
+    padding-left: 26px;
+    max-width: 62ch;
+  }
+  .copybar{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 22px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--rule);
+  }
+  .copybar .hint{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+  .copy-btn{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: none;
+    border: 1px solid var(--rule);
+    color: var(--ink-soft);
+    padding: 7px 14px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .copy-btn:hover{ border-color: var(--blueprint); color: var(--blueprint-ink); }
+
+  /* sheet 2: technical notes */
+  .notes{
+    display: grid;
+    grid-template-columns: 84px 1fr;
+    column-gap: 22px;
+    row-gap: 30px;
+  }
+  .note-num{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--walnut);
+    padding-top: 3px;
+  }
+  .note h3{
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 7px;
+  }
+  .note p{ margin: 0; max-width: 64ch; color: var(--ink-soft); }
+  .note p + p{ margin-top: 10px; }
+  .note strong{ color: var(--ink); font-weight: 600; }
+
+  /* sheet 3: code plaque */
+  .plaque-wrap{ position: relative; }
+  .plaque{
+    background: var(--plaque);
+    color: var(--plaque-ink);
+    border: 1px solid var(--plaque-rule);
+    padding: 26px 24px;
+    overflow-x: auto;
+    box-shadow: 0 18px 40px -20px var(--shadow);
+  }
+  .plaque pre{
+    margin: 0;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.65;
+    white-space: pre;
+  }
+  .plaque .tok-kw{ color: #9BB6FF; }
+  .plaque .tok-fn{ color: #E8C87A; }
+  .plaque .tok-cm{ color: #7A7263; font-style: italic; }
+  .plaque-caption{
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 14px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+  .plaque-caption .copy-btn{ margin: -6px 0; }
+
+  /* sheet 4: narrative */
+  .story{ max-width: 66ch; }
+  .story p{ margin: 0 0 20px; color: var(--ink-soft); }
+  .story p:first-of-type::first-letter{
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    font-size: 3.4em;
+    line-height: 0.8;
+    float: left;
+    padding: 6px 8px 0 0;
+    color: var(--ink);
+  }
+  .story em{ font-family: "Fraunces", Georgia, serif; font-style: italic; color: var(--ink); }
+
+  /* Footer */
+  footer{
+    padding: 40px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    align-items: baseline;
+    justify-content: space-between;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+
+  @media (max-width: 620px){
+    .titleblock{ grid-template-columns: repeat(2, 1fr); row-gap: 16px; }
+    .titleblock div:nth-child(3){ border-left: none; padding-left: 0; }
+    .notes{ grid-template-columns: 1fr; }
+    .note-num{ padding-top: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="hero-frame">
+      <svg class="rayfan" viewBox="0 0 800 260" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+        <circle cx="400" cy="230" r="2.5"></circle>
+        <g id="rayfanGroup"></g>
+      </svg>
+
+      <h1>Echos</h1>
+      <p class="hero-tag">A generative sculpture series in which the code that draws the piece is the same code that drafts the blueprint to cut it.</p>
+
+      <div class="titleblock">
+        <div>
+          <div class="tb-label">Starts from</div>
+          <div class="tb-value">one seed value</div>
+        </div>
+        <div>
+          <div class="tb-label">Layers</div>
+          <div class="tb-value">12, typical</div>
+        </div>
+        <div>
+          <div class="tb-label">Depth</div>
+          <div class="tb-value">layers &times; 1/16 in</div>
+        </div>
+        <div>
+          <div class="tb-label">Output</div>
+          <div class="tb-value">image + cut file</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section id="short-description" aria-labelledby="s1-title">
+    <p class="eyebrow">Sheet 1 of 4 &middot; Short Description</p>
+    <h2 class="sheet-title" id="s1-title">For the wall label</h2>
+
+    <blockquote class="pullquote" id="short-desc-text">
+      Echos is a generative sculpture series where the artwork&rsquo;s blueprint and its image are the same file. Each piece begins as a single seed value, which grows into a radial field of wavering, noise-perturbed lines rippling outward from a hidden origin point. The algorithm doesn&rsquo;t stop at a picture. It drafts a stack of individually cuttable layers, twelve of them in a typical piece, dimensioned in real inches and meant to be laser-cut and stacked into a physical wall relief. The image on screen is a preview. The object is the artwork.
+    </blockquote>
+
+    <div class="copybar">
+      <span class="hint">84 words &middot; suitable for gallery didactics, press, or web bios</span>
+      <button class="copy-btn" data-copy-target="short-desc-text" type="button">Copy text</button>
+    </div>
+  </section>
+
+  <section id="system" aria-labelledby="s2-title">
+    <p class="eyebrow">Sheet 2 of 4 &middot; System and Blueprint</p>
+    <h2 class="sheet-title" id="s2-title">How the piece is drafted</h2>
+
+    <div class="notes">
+      <div class="note-num">01</div>
+      <div class="note">
+        <h3>The seed</h3>
+        <p>Every piece starts as a single seed value: a long, effectively random number I turn into an integer and use twice. Once to drive the pseudorandom stream that picks palette, layer count, and proportion, and once to seed a three-dimensional noise field that governs everything organic in the piece, the drips especially. No two seeds ever draw the same field. The same seed always redraws it exactly. The artwork is a pure function of where it started.</p>
+      </div>
+
+      <div class="note-num">02</div>
+      <div class="note">
+        <h3>The radial wave</h3>
+        <p>Each layer starts as a set of <strong>rays</strong>: spokes set at even angular steps around a shared origin point. A ray begins as a ten-point path stepping outward from the center toward the far edge of the canvas, its offsets alternating up and down and scaled by how wavy and how swirly I&rsquo;ve set the piece, and by that layer&rsquo;s own depth in the stack, so the wave compounds as the layers rise. Curve smoothing turns those ten points into one continuous, bowed line, and a polygon offset routine inflates that line into a closed, fillable, cuttable band. Rotate the band once for every spoke, evenly around the circle, and a layer&rsquo;s ray field is drawn.</p>
+      </div>
+
+      <div class="note-num">03</div>
+      <div class="note">
+        <h3>Noise-gated drips</h3>
+        <p>Along each ray, the system samples the noise field at a point tied to the spoke, its position, and the layer. Wherever that sample crosses a threshold, a circle gets cut from the band and its ring welded back in: an organic, uneven drip that shows up on some layers and not others, at a density and reach the piece&rsquo;s own settings control. It&rsquo;s the one place I let chance into an otherwise fully determined shape.</p>
+      </div>
+
+      <div class="note-num">04</div>
+      <div class="note">
+        <h3>Boolean stacking</h3>
+        <p>Every ray, drip, and frame edge gets combined through boolean geometry: union, subtract, intersect. Rather than run those operations through slower, floating-point math, I route them through a polygon-clipping engine built for exactly this, scaling every path to integer coordinates first and rebuilding the result as a clean vector shape after. A typical piece runs this dozens of times per layer, across twelve layers. At that volume, it&rsquo;s the difference between geometry that stays valid and geometry that quietly collapses into self-intersecting garbage.</p>
+      </div>
+
+      <div class="note-num">05</div>
+      <div class="note">
+        <h3>The frame constraint</h3>
+        <p>Once a layer&rsquo;s rays are drawn, I intersect them against the canvas rectangle so nothing draws past the edge, then union in a fixed picture-frame band along the border. That second step matters more than it looks like it should: it guarantees every layer keeps an unbroken structural rim, even on a layer where the generative field never happened to reach the edge on its own. A sheet of mat board can be handled, cut free, and mounted. A sheet with a broken border falls apart in your hand.</p>
+      </div>
+
+      <div class="note-num">06</div>
+      <div class="note">
+        <h3>Real units</h3>
+        <p>One hundred canvas units equal one inch. Mat width, drip radius, ray offset: every parameter in the system is already a physical dimension, scaled to whatever size I&rsquo;ve chosen for the piece. Layer count times a sixteenth of an inch, roughly the thickness of the board itself, becomes the piece&rsquo;s actual depth off the wall. There&rsquo;s no translation step between what the algorithm draws and what the laser cuts. They&rsquo;re the same numbers.</p>
+      </div>
+
+      <div class="note-num">07</div>
+      <div class="note">
+        <h3>Fabrication geometry</h3>
+        <p>Two more things get cut into every layer for assembly, not for looks. A small stamped tally, so I can always tell which sheet is which and in what order, even after a dozen of them have come off the bed looking almost identical. And, on all but the top two layers, a cavity shaped to hold mounting hardware, so the finished, stacked piece hangs flush against the wall with nothing visible. My own signature, cut as a vector, goes into the top layer.</p>
+      </div>
+
+      <div class="note-num">08</div>
+      <div class="note">
+        <h3>The blueprint</h3>
+        <p>When a piece finishes rendering, the system doesn&rsquo;t stop at an image. It exports the actual cut files. One drawing assigns each layer its own stroke color, matching the convention my laser software uses for power and speed settings, with no fill at all, so a single file can drive a full, multi-pass cut of every sheet. A second, flattened export goes further: each layer gets boolean-subtracted by every layer above it, leaving only the silhouette that would actually be visible once the whole stack is glued and assembled. The code that painted the screen is the same code that hands me everything I need to cut, stack, and glue the object by hand.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="source" aria-labelledby="s3-title">
+    <p class="eyebrow">Sheet 3 of 4 &middot; Source Excerpt</p>
+    <h2 class="sheet-title" id="s3-title">The code behind the piece</h2>
+    <p style="max-width:60ch;color:var(--ink-soft);margin:-12px 0 26px;">The function below draws one ray field: the spoke, the wave, and the noise-gated drip, condensed here for display. It&rsquo;s real, working logic from the piece, not an illustration of it.</p>
+
+    <div class="plaque-wrap">
+      <div class="plaque">
+        <pre id="code-snippet"><span class="tok-kw">function</span> <span class="tok-fn">rays</span>(z){
+  p=[]; <span class="tok-cm">// this layer's spoke points</span>
+  <span class="tok-kw">var</span> wF=~~(wavyness*((z+1)/swirly)),
+      dg=~~Math.sqrt(high*high+wide*wide),
+      aS=~~(365/spokes);
+
+  <span class="tok-kw">for</span>(l=0;l&lt;spokes;l++){
+    p=[pt(0,0),pt(distribution*.2,wF),pt(distribution*.3,-wF),
+       pt(distribution*.4,wF),pt(distribution*.5,-wF),
+       pt(distribution*.6,wF),pt(distribution*.7,-wF),
+       pt(distribution*1.1,wF),pt(dg,-wF),pt(dg+10,-wF)];
+
+    lines=<span class="tok-kw">new</span> Path(); p.forEach(q=&gt;lines.add(q)); lines.smooth();
+    mesh=PaperOffset.offsetStroke(lines,minOffset,{cap:<span class="tok-fn">'butt'</span>});
+
+    <span class="tok-cm">// noise-gated drip: chance, but located</span>
+    <span class="tok-kw">for</span>(n=dripstart;n&lt;dripRadius;n++)
+      <span class="tok-kw">if</span>(noise.get(l,n,z)&gt;dripfrequency){
+        c=<span class="tok-kw">new</span> Path.Circle(p[n-1],noise.get(l,n)*minOffset*2*(z+1));
+        mesh=clipUnite(clipSubtract(mesh,c),
+              PaperOffset.offsetStroke(c,minOffset,{cap:<span class="tok-fn">'round'</span>}));
+      }
+
+    mesh.rotate(aS*l,p[0]);
+    mesh.position=mesh.position.add(origin);
+    join(z,mesh); <span class="tok-cm">// welded into this layer's sheet</span>
+  }
+}</span></pre>
+      </div>
+      <div class="plaque-caption">
+        <span><code>rays(z)</code> &middot; radial wave and drip generator, Echos</span>
+        <button class="copy-btn" data-copy-target="code-snippet" type="button">Copy code</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="story" aria-labelledby="s4-title">
+    <p class="eyebrow">Sheet 4 of 4 &middot; Sketchbook to System</p>
+    <h2 class="sheet-title" id="s4-title">Notes on the making of it</h2>
+
+    <!-- Draft narrative, written in Shawn's voice and grounded in his real practice
+         (industrial design background, laser-cut mat board, PVA, hand assembly).
+         Check dates, places, and any other specifics before publishing. -->
+    <div class="story">
+      <p>It started with a bad drawing. Not bad in the sense of unskilled, bad in the sense of unrepeatable. The earliest sketches for this series were done by hand: a center point, a compass, spokes walked out at even angles, each one nudged off its straight line by feel, the way a ripple loses its perfect circle by the time it reaches the edge of a pond. The sketches looked right. Each one also took an evening, and no two of them rhymed with each other the way real echoes do: same source, same physics, a different result every time depending on what stood in the way.</p>
+
+      <p>That&rsquo;s the thing code is actually good at. Not making one drawing, but writing the <em>rule</em> for a hundred variations of it, specific enough that every result still belongs to the same family, loose enough that the seed gets to decide the rest. The wave itself was the easy part. A radiating, wavering line is an afternoon of trigonometry. The hard part was that this was never going to stay a picture. From the first sketch, the goal was a physical object: sheets of acid-free mat board, laser-cut and stacked, each layer its own color, its own silhouette, its own sliver of depth, until a flat drawing became a low relief you could run a hand across.</p>
+
+      <p>That single decision changed what the code was allowed to draw. A ray that self-intersects breaks a toolpath. A layer with a broken edge falls apart on the cutting bed. A drip that clips through the frame ruins the piece&rsquo;s structural rim. The generative system doesn&rsquo;t only have to look right on a screen. It has to still be one coherent object after twelve stacked layers have been cut, glued with PVA, and pressed flat to dry.</p>
+
+      <p>The noise came in almost by accident, while I was looking for something less mechanical than pure randomness for the drips, a way for chance to feel <em>located</em>, tied to a specific point on a specific layer instead of rolled from nowhere. The first time a threshold crossing carved an unplanned hole clean through three layers at once, in register, it read as a mistake. It&rsquo;s stayed in every version since.</p>
+
+      <p>What shows up on screen when a render finishes was never really the point. It&rsquo;s the fastest way to see whether that seed&rsquo;s particular choices, the layer count, the wavyness, the drips, the palette, add up to something worth building. The real output comes after: a blueprint, color-coded layer by layer, dimensioned to the inch, ready for the laser and a patient afternoon of stacking and glue. Echos is a series about the distance between a sketch and an object. I write the code to close that distance, not just describe it.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Echos: a generative sculpture series</span>
+    <span>Paper.js &middot; Clipper &middot; 3D Perlin noise</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  // Ray-fan hero graphic: computed spokes fanning from the origin point,
+  // mirroring the piece's own radial construction rather than a decorative stand-in.
+  var svgNS = "http://www.w3.org/2000/svg";
+  var group = document.getElementById("rayfanGroup");
+  if (group) {
+    var cx = 400, cy = 230, spokes = 22, reach = 210;
+    for (var i = 0; i < spokes; i++) {
+      var t = i / (spokes - 1);
+      var angle = Math.PI * (0.06 + t * 0.88); // fan across ~160 degrees, upward
+      var wobble = 10 + 14 * Math.sin(i * 1.7);
+      var midR = reach * (0.5 + 0.06 * Math.sin(i * 2.3));
+      var mx = cx + Math.cos(Math.PI + angle) * midR;
+      var my = cy - Math.sin(angle) * midR + wobble;
+      var ex = cx + Math.cos(Math.PI + angle) * reach;
+      var ey = cy - Math.sin(angle) * reach;
+      var d = "M" + cx + "," + cy + " Q" + mx.toFixed(1) + "," + my.toFixed(1) + " " + ex.toFixed(1) + "," + ey.toFixed(1);
+      var path = document.createElementNS(svgNS, "path");
+      path.setAttribute("d", d);
+      group.appendChild(path);
+    }
+  }
+
+  // Lightweight copy-to-clipboard for the wall text and the code excerpt.
+  document.querySelectorAll(".copy-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var targetId = btn.getAttribute("data-copy-target");
+      var el = document.getElementById(targetId);
+      if (!el) return;
+      var text = el.innerText;
+      var original = btn.textContent;
+      function done(ok){
+        btn.textContent = ok ? "Copied" : "Select & copy";
+        setTimeout(function(){ btn.textContent = original; }, 1600);
+      }
+      try {
+        navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ done(false); });
+      } catch (e) {
+        done(false);
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>
